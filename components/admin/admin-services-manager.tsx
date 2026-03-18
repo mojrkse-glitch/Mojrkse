@@ -1,4 +1,5 @@
 "use client";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Category, Service, ServiceField } from "@/lib/types";
@@ -10,23 +11,373 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ServiceFieldsEditor } from "@/components/admin/service-fields-editor";
 
-const emptyField = (): ServiceField => ({ id: `field-${Math.random().toString(36).slice(2,8)}`, field_key: "", field_label: "", field_type: "text", placeholder: "", is_required: false, options: [], sort_order: 1 });
-const formFor = (categories: Category[]) => ({ title: "", slug: "", category_id: categories[0]?.id || "", description: "", image_url: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80", price_usd: "", delivery_time_text: "", sort_order: "999", meta_title: "", meta_description: "", is_active: true, is_featured: false, is_swap_service: false, fields: [emptyField()] as ServiceField[] });
+const emptyField = (): ServiceField => ({
+  id: `field-${Math.random().toString(36).slice(2, 8)}`,
+  field_key: "",
+  field_label: "",
+  field_type: "text",
+  placeholder: "",
+  is_required: false,
+  options: [],
+  sort_order: 1
+});
 
-export function AdminServicesManager({ services, categories }: { services: Service[]; categories: Category[] }) {
- const router = useRouter();
- const [editingId, setEditingId] = useState<string | null>(null);
- const [form, setForm] = useState(formFor(categories));
- const [message, setMessage] = useState<string | null>(null);
- const [loading, setLoading] = useState(false);
- const reset = () => { setEditingId(null); setForm(formFor(categories)); };
- const startEdit = (service: Service) => setForm({ title: service.title, slug: service.slug, category_id: service.category_id, description: service.description, image_url: service.image_url, price_usd: String(service.price_usd || ""), delivery_time_text: service.delivery_time_text || "", sort_order: String(service.sort_order || 999), meta_title: service.meta_title || "", meta_description: service.meta_description || "", is_active: service.is_active, is_featured: Boolean(service.is_featured), is_swap_service: Boolean(service.is_swap_service), fields: service.fields?.length ? service.fields : [emptyField()] }) || setEditingId(service.id);
- const save = async () => {
-  setLoading(true); setMessage(null);
-  const payload = { ...form, slug: form.slug || slugify(form.title), price_usd: Number(form.price_usd || 0), sort_order: Number(form.sort_order || 999), fields: form.fields };
-  const res = await fetch(editingId ? `/api/admin/services/${editingId}` : '/api/admin/services', { method: editingId ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-  const data = await res.json(); setLoading(false); setMessage(data.message || (res.ok ? 'تم الحفظ.' : 'تعذر الحفظ.')); if (res.ok) { reset(); router.refresh(); }
- };
- const removeService = async (id: string) => { if (!window.confirm('هل تريد حذف هذه الخدمة؟')) return; const res = await fetch(`/api/admin/services/${id}`, { method: 'DELETE' }); const data = await res.json(); setMessage(data.message || (res.ok ? 'تم الحذف.' : 'تعذر الحذف.')); if (res.ok) router.refresh(); };
- return <div className="grid gap-8 lg:grid-cols-[420px_1fr]"><Card className="h-fit"><CardHeader><CardTitle>{editingId ? 'تعديل الخدمة' : 'إضافة خدمة جديدة'}</CardTitle></CardHeader><CardContent className="space-y-4">{message ? <Alert>{message}</Alert> : null}<Input placeholder="عنوان الخدمة" value={form.title} onChange={(e)=>setForm((c)=>({ ...c, title: e.target.value, slug: c.slug || slugify(e.target.value) }))} /><Input placeholder="Slug" value={form.slug} onChange={(e)=>setForm((c)=>({ ...c, slug: slugify(e.target.value) }))} /><select className="flex h-11 w-full rounded-2xl border border-border bg-white/[0.03] px-4 text-sm text-foreground" value={form.category_id} onChange={(e)=>setForm((c)=>({ ...c, category_id: e.target.value }))}>{categories.map((cat)=><option key={cat.id} value={cat.id}>{cat.name}</option>)}</select><Textarea placeholder="وصف الخدمة" value={form.description} onChange={(e)=>setForm((c)=>({ ...c, description: e.target.value }))} /><Input placeholder="رابط الصورة" value={form.image_url} onChange={(e)=>setForm((c)=>({ ...c, image_url: e.target.value }))} /><div className="grid gap-3 md:grid-cols-2"><Input placeholder="السعر بالدولار" type="number" value={form.price_usd} onChange={(e)=>setForm((c)=>({ ...c, price_usd: e.target.value }))} /><Input placeholder="وقت التسليم" value={form.delivery_time_text} onChange={(e)=>setForm((c)=>({ ...c, delivery_time_text: e.target.value }))} /></div><div className="grid gap-3 md:grid-cols-2"><Input placeholder="ترتيب الظهور" type="number" value={form.sort_order} onChange={(e)=>setForm((c)=>({ ...c, sort_order: e.target.value }))} /><div className="grid grid-cols-3 gap-2 text-sm"><label className="flex items-center gap-2 rounded-2xl border border-border px-3 py-2"><input type="checkbox" checked={form.is_active} onChange={(e)=>setForm((c)=>({ ...c, is_active: e.target.checked }))} />نشطة</label><label className="flex items-center gap-2 rounded-2xl border border-border px-3 py-2"><input type="checkbox" checked={form.is_featured} onChange={(e)=>setForm((c)=>({ ...c, is_featured: e.target.checked }))} />مميزة</label><label className="flex items-center gap-2 rounded-2xl border border-border px-3 py-2"><input type="checkbox" checked={form.is_swap_service} onChange={(e)=>setForm((c)=>({ ...c, is_swap_service: e.target.checked }))} />Swap</label></div></div><Input placeholder="Meta title" value={form.meta_title} onChange={(e)=>setForm((c)=>({ ...c, meta_title: e.target.value }))} /><Textarea placeholder="Meta description" value={form.meta_description} onChange={(e)=>setForm((c)=>({ ...c, meta_description: e.target.value }))} /><ServiceFieldsEditor fields={form.fields} onChange={(fields)=>setForm((c)=>({ ...c, fields }))} /><div className="flex flex-wrap gap-3"><Button type="button" onClick={save} disabled={loading}>{loading ? 'جارٍ الحفظ...' : editingId ? 'حفظ التعديلات' : 'إضافة الخدمة'}</Button>{editingId ? <Button type="button" variant="outline" onClick={reset}>إلغاء</Button> : null}</div></CardContent></Card><div className="space-y-5"><h1 className="text-3xl font-black text-foreground">إدارة الخدمات</h1>{services.map((service)=><Card key={service.id}><CardContent className="space-y-4"><div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between"><div><h2 className="text-lg font-bold text-foreground">{service.title}</h2><p className="mt-2 text-sm leading-7 text-muted-foreground">{service.description}</p><div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground"><span>Slug: {service.slug}</span><span>•</span><span>الحقول: {service.fields.length}</span><span>•</span><span>{service.is_active ? 'نشطة' : 'معطلة'}</span></div></div><div className="flex flex-wrap gap-3"><Button type="button" variant="secondary" onClick={()=>{ setEditingId(service.id); startEdit(service); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>تعديل</Button><Button type="button" variant="danger" onClick={()=>removeService(service.id)}>حذف</Button></div></div></CardContent></Card>)}</div></div>;
+const formFor = (categories: Category[]) => ({
+  title: "",
+  slug: "",
+  category_id: categories[0]?.id || "",
+  description: "",
+  image_url:
+    "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80",
+  price_usd: "",
+  delivery_time_text: "",
+  sort_order: "999",
+  meta_title: "",
+  meta_description: "",
+  is_active: true,
+  is_featured: false,
+  is_swap_service: false,
+  fields: [emptyField()] as ServiceField[]
+});
+
+export function AdminServicesManager({
+  services,
+  categories
+}: {
+  services: Service[];
+  categories: Category[];
+}) {
+  const router = useRouter();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState(formFor(categories));
+  const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const reset = () => {
+    setEditingId(null);
+    setForm(formFor(categories));
+  };
+
+  const startEdit = (service: Service) => {
+    setForm({
+      title: service.title,
+      slug: service.slug,
+      category_id: service.category_id,
+      description: service.description,
+      image_url: service.image_url,
+      price_usd: String(service.price_usd || ""),
+      delivery_time_text: service.delivery_time_text || "",
+      sort_order: String(service.sort_order || 999),
+      meta_title: service.meta_title || "",
+      meta_description: service.meta_description || "",
+      is_active: service.is_active,
+      is_featured: Boolean(service.is_featured),
+      is_swap_service: Boolean(service.is_swap_service),
+      fields: service.fields?.length ? service.fields : [emptyField()]
+    });
+
+    setEditingId(service.id);
+  };
+
+  const save = async () => {
+    setLoading(true);
+    setMessage(null);
+
+    const payload = {
+      ...form,
+      slug: form.slug || slugify(form.title),
+      price_usd: Number(form.price_usd || 0),
+      sort_order: Number(form.sort_order || 999),
+      fields: form.fields
+    };
+
+    const res = await fetch(
+      editingId ? `/api/admin/services/${editingId}` : "/api/admin/services",
+      {
+        method: editingId ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }
+    );
+
+    const data = await res.json();
+
+    setLoading(false);
+    setMessage(data.message || (res.ok ? "تم الحفظ." : "تعذر الحفظ."));
+
+    if (res.ok) {
+      reset();
+      router.refresh();
+    }
+  };
+
+  const removeService = async (id: string) => {
+    if (!window.confirm("هل تريد حذف هذه الخدمة؟")) return;
+
+    const res = await fetch(`/api/admin/services/${id}`, {
+      method: "DELETE"
+    });
+
+    const data = await res.json();
+    setMessage(data.message || (res.ok ? "تم الحذف." : "تعذر الحذف."));
+
+    if (res.ok) {
+      router.refresh();
+    }
+  };
+
+  return (
+    <div className="grid gap-8 lg:grid-cols-[420px_1fr]">
+      <Card className="h-fit">
+        <CardHeader>
+          <CardTitle>{editingId ? "تعديل الخدمة" : "إضافة خدمة جديدة"}</CardTitle>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {message ? <Alert>{message}</Alert> : null}
+
+          <Input
+            placeholder="عنوان الخدمة"
+            value={form.title}
+            onChange={(e) =>
+              setForm((c) => ({
+                ...c,
+                title: e.target.value,
+                slug: c.slug || slugify(e.target.value)
+              }))
+            }
+          />
+
+          <Input
+            placeholder="Slug"
+            value={form.slug}
+            onChange={(e) =>
+              setForm((c) => ({
+                ...c,
+                slug: slugify(e.target.value)
+              }))
+            }
+          />
+
+          <select
+            className="flex h-11 w-full rounded-2xl border border-border bg-white/[0.03] px-4 text-sm text-foreground"
+            value={form.category_id}
+            onChange={(e) =>
+              setForm((c) => ({
+                ...c,
+                category_id: e.target.value
+              }))
+            }
+          >
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
+          </select>
+
+          <Textarea
+            placeholder="وصف الخدمة"
+            value={form.description}
+            onChange={(e) =>
+              setForm((c) => ({
+                ...c,
+                description: e.target.value
+              }))
+            }
+          />
+
+          <Input
+            placeholder="رابط الصورة"
+            value={form.image_url}
+            onChange={(e) =>
+              setForm((c) => ({
+                ...c,
+                image_url: e.target.value
+              }))
+            }
+          />
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <Input
+              placeholder="السعر بالدولار"
+              type="number"
+              value={form.price_usd}
+              onChange={(e) =>
+                setForm((c) => ({
+                  ...c,
+                  price_usd: e.target.value
+                }))
+              }
+            />
+
+            <Input
+              placeholder="وقت التسليم"
+              value={form.delivery_time_text}
+              onChange={(e) =>
+                setForm((c) => ({
+                  ...c,
+                  delivery_time_text: e.target.value
+                }))
+              }
+            />
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <Input
+              placeholder="ترتيب الظهور"
+              type="number"
+              value={form.sort_order}
+              onChange={(e) =>
+                setForm((c) => ({
+                  ...c,
+                  sort_order: e.target.value
+                }))
+              }
+            />
+
+            <div className="grid grid-cols-3 gap-2 text-sm">
+              <label className="flex items-center gap-2 rounded-2xl border border-border px-3 py-2">
+                <input
+                  type="checkbox"
+                  checked={form.is_active}
+                  onChange={(e) =>
+                    setForm((c) => ({
+                      ...c,
+                      is_active: e.target.checked
+                    }))
+                  }
+                />
+                نشطة
+              </label>
+
+              <label className="flex items-center gap-2 rounded-2xl border border-border px-3 py-2">
+                <input
+                  type="checkbox"
+                  checked={form.is_featured}
+                  onChange={(e) =>
+                    setForm((c) => ({
+                      ...c,
+                      is_featured: e.target.checked
+                    }))
+                  }
+                />
+                مميزة
+              </label>
+
+              <label className="flex items-center gap-2 rounded-2xl border border-border px-3 py-2">
+                <input
+                  type="checkbox"
+                  checked={form.is_swap_service}
+                  onChange={(e) =>
+                    setForm((c) => ({
+                      ...c,
+                      is_swap_service: e.target.checked
+                    }))
+                  }
+                />
+                Swap
+              </label>
+            </div>
+          </div>
+
+          <Input
+            placeholder="Meta title"
+            value={form.meta_title}
+            onChange={(e) =>
+              setForm((c) => ({
+                ...c,
+                meta_title: e.target.value
+              }))
+            }
+          />
+
+          <Textarea
+            placeholder="Meta description"
+            value={form.meta_description}
+            onChange={(e) =>
+              setForm((c) => ({
+                ...c,
+                meta_description: e.target.value
+              }))
+            }
+          />
+
+          <ServiceFieldsEditor
+            fields={form.fields}
+            onChange={(fields) =>
+              setForm((c) => ({
+                ...c,
+                fields
+              }))
+            }
+          />
+
+          <div className="flex flex-wrap gap-3">
+            <Button type="button" onClick={save} disabled={loading}>
+              {loading
+                ? "جارٍ الحفظ..."
+                : editingId
+                  ? "حفظ التعديلات"
+                  : "إضافة الخدمة"}
+            </Button>
+
+            {editingId ? (
+              <Button type="button" variant="outline" onClick={reset}>
+                إلغاء
+              </Button>
+            ) : null}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="space-y-5">
+        <h1 className="text-3xl font-black text-foreground">إدارة الخدمات</h1>
+
+        {services.map((service) => (
+          <Card key={service.id}>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-foreground">{service.title}</h2>
+                  <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                    {service.description}
+                  </p>
+
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    <span>Slug: {service.slug}</span>
+                    <span>•</span>
+                    <span>الحقول: {service.fields.length}</span>
+                    <span>•</span>
+                    <span>{service.is_active ? "نشطة" : "معطلة"}</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      startEdit(service);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                  >
+                    تعديل
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="danger"
+                    onClick={() => removeService(service.id)}
+                  >
+                    حذف
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
 }
