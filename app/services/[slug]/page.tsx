@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { OrderForm } from "@/components/order/order-form";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { getPaymentMethods, getServiceBySlug, getSettings } from "@/lib/data-access";
+import { getPaymentMethods, getServiceBySlug, getSettings, getWalletSummary } from "@/lib/data-access";
+import { getCurrentUser } from "@/lib/auth";
 import { formatCurrency } from "@/lib/utils";
 
 type Params = { slug: string };
@@ -40,10 +41,12 @@ export default async function ServiceDetailsPage({
   params: Promise<Params>;
 }) {
   const { slug } = await params;
-  const [service, paymentMethods, settings] = await Promise.all([
+  const currentUser = await getCurrentUser();
+  const [service, paymentMethods, settings, wallet] = await Promise.all([
     getServiceBySlug(slug),
     getPaymentMethods(),
-    getSettings()
+    getSettings(),
+    getWalletSummary(currentUser?.id)
   ]);
 
   if (!service) {
@@ -101,14 +104,14 @@ export default async function ServiceDetailsPage({
               {service.fields.map((field) => (
                 <li key={field.id}>• {field.field_label}{field.is_required ? " (إلزامي)" : ""}</li>
               ))}
-              <li>• اختيار وسيلة الدفع المناسبة</li>
-              <li>• رفع صورة إثبات الدفع إن كانت الوسيلة تتطلب ذلك</li>
+              <li>• اختيار الدفع اليدوي أو الدفع مباشرة من رصيد المحفظة</li>
+              <li>• رفع صورة إثبات الدفع فقط عند اختيار الدفع اليدوي بوسيلة تتطلب إثباتًا</li>
             </ul>
           </div>
         </div>
 
         <div className="lg:sticky lg:top-28 lg:self-start">
-          <OrderForm service={service} paymentMethods={paymentMethods} settings={settings} />
+          <OrderForm service={service} paymentMethods={paymentMethods} settings={settings} walletBalanceUsd={wallet.balance_usd} />
         </div>
       </div>
     </div>

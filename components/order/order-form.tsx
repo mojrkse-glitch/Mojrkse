@@ -13,10 +13,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-type Props = { service: Service; paymentMethods: PaymentMethod[]; settings: { exchangeRate: number; swapFeePercentage: number } };
+type Props = {
+  service: Service;
+  paymentMethods: PaymentMethod[];
+  settings: { exchangeRate: number; swapFeePercentage: number };
+  walletBalanceUsd?: number;
+};
 
-export function OrderForm({ service, paymentMethods, settings }: Props) {
+export function OrderForm({ service, paymentMethods, settings, walletBalanceUsd = 0 }: Props) {
   const router = useRouter();
+  const [paymentMode, setPaymentMode] = useState<"wallet" | "manual">("manual");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(paymentMethods[0]?.id || "");
   const [notes, setNotes] = useState("");
   const [proofFile, setProofFile] = useState<File | null>(null);
@@ -37,6 +43,7 @@ export function OrderForm({ service, paymentMethods, settings }: Props) {
     return { originalAmount: service.price_usd, fee: 0, finalUsdPrice: service.price_usd };
   }, [service, settings.swapFeePercentage, swapInput]);
 
+  const walletEnough = walletBalanceUsd >= pricing.finalUsdPrice && pricing.finalUsdPrice > 0;
   const updateField = (key: string, value: string) => setDynamicValues((current) => ({ ...current, [key]: value }));
 
   const handleSubmit = async (event: FormEvent) => {
@@ -46,6 +53,7 @@ export function OrderForm({ service, paymentMethods, settings }: Props) {
     try {
       const payload = new FormData();
       payload.append("serviceId", service.id);
+      payload.append("paymentMode", paymentMode);
       payload.append("paymentMethodId", selectedPaymentMethod);
       payload.append("notes", notes);
       payload.append("dynamicValues", JSON.stringify(dynamicValues));
@@ -90,6 +98,25 @@ export function OrderForm({ service, paymentMethods, settings }: Props) {
 
       <div className="space-y-5 rounded-2xl border border-white/10 bg-white/[0.02] p-6">
         <h3 className="text-lg font-bold text-foreground">بيانات الطلب</h3>
+
+        <div>
+          <Label>طريقة الدفع</Label>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <button type="button" onClick={() => setPaymentMode("manual")} className={`rounded-2xl border p-4 text-right transition ${paymentMode === "manual" ? "border-primary bg-primary/10" : "border-border bg-background/40"}`}>
+              <p className="font-semibold text-foreground">دفع يدوي</p>
+              <p className="mt-1 text-sm text-muted-foreground">رفع إثبات الدفع لكل طلب حسب الوسيلة المحددة.</p>
+            </button>
+            <button type="button" onClick={() => setPaymentMode("wallet")} className={`rounded-2xl border p-4 text-right transition ${paymentMode === "wallet" ? "border-primary bg-primary/10" : "border-border bg-background/40"}`}>
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-semibold text-foreground">الدفع من الرصيد</p>
+                <Badge variant={walletEnough ? "success" : "warning"}>{formatCurrency(walletBalanceUsd)}</Badge>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">يتم الخصم تلقائيًا من محفظتك مباشرة عند تأكيد الطلب.</p>
+            </button>
+          </div>
+          {paymentMode === "wallet" && !walletEnough ? <p className="mt-3 text-sm text-warning">رصيدك الحالي غير كافٍ. يمكنك شحن المحفظة من صفحة الرصيد ثم العودة لإتمام الطلب.</p> : null}
+        </div>
+
         {service.fields.map((field) => (
           <div key={field.id}>
             <Label htmlFor={field.field_key}>{field.field_label}</Label>
@@ -108,18 +135,27 @@ export function OrderForm({ service, paymentMethods, settings }: Props) {
           </div>
         ))}
 
-        <div>
-          <Label htmlFor="payment-method">وسيلة الدفع</Label>
-          <select id="payment-method" className="flex h-11 w-full rounded-2xl border border-border bg-white/[0.03] px-4 text-sm text-foreground outline-none focus:border-primary/60" value={selectedPaymentMethod} onChange={(e) => setSelectedPaymentMethod(e.target.value)}>
-            {paymentMethods.map((method) => <option key={method.id} value={method.id}>{method.title}</option>)}
-          </select>
-        </div>
+        {paymentMode === "manual" ? (
+          <>
+            <div>
+              <Label htmlFor="payment-method">وسيلة الدفع</Label>
+              <select id="payment-method" className="flex h-11 w-full rounded-2xl border border-border bg-white/[0.03] px-4 text-sm text-foreground outline-none focus:border-primary/60" value={selectedPaymentMethod} onChange={(e) => setSelectedPaymentMethod(e.target.value)}>
+                {paymentMethods.map((method) => <option key={method.id} value={method.id}>{method.title}</option>)}
+              </select>
+            </div>
 
-        {selectedMethod ? <div className="rounded-2xl border border-border bg-background/70 p-4 text-sm"><p className="font-semibold text-foreground">تعليمات الدفع</p><p className="mt-2 leading-7 text-muted-foreground">{selectedMethod.instructions}</p>{selectedMethod.wallet_address ? <div className="mt-3 rounded-xl border border-primary/20 bg-primary/10 p-3 font-mono text-xs text-primary">{selectedMethod.wallet_address}</div> : null}</div> : null}
-        {isHandDelivery ? <a href={generateWhatsAppLink(siteConfig.whatsappMessage, siteConfig.whatsappPhone)} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center rounded-2xl bg-secondary px-5 text-sm font-semibold text-secondary-foreground">فتح واتساب للتنسيق</a> : null}
-        {selectedMethod?.requires_proof ? <div><Label htmlFor="payment-proof">إثبات الدفع</Label><Input id="payment-proof" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(e) => setProofFile(e.target.files?.[0] || null)} required={selectedMethod.requires_proof} /><p className="mt-2 text-xs text-muted-foreground">الصيغ المدعومة: JPG, PNG, WEBP, PDF — الحد الأقصى 5MB.</p></div> : null}
+            {selectedMethod ? <div className="rounded-2xl border border-border bg-background/70 p-4 text-sm"><p className="font-semibold text-foreground">تعليمات الدفع</p><p className="mt-2 leading-7 text-muted-foreground">{selectedMethod.instructions}</p>{selectedMethod.wallet_address ? <div className="mt-3 rounded-xl border border-primary/20 bg-primary/10 p-3 font-mono text-xs text-primary">{selectedMethod.wallet_address}</div> : null}</div> : null}
+            {isHandDelivery ? <a href={generateWhatsAppLink(siteConfig.whatsappMessage, siteConfig.whatsappPhone)} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center rounded-2xl bg-secondary px-5 text-sm font-semibold text-secondary-foreground">فتح واتساب للتنسيق</a> : null}
+            {selectedMethod?.requires_proof ? <div><Label htmlFor="payment-proof">إثبات الدفع</Label><Input id="payment-proof" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" onChange={(e) => setProofFile(e.target.files?.[0] || null)} required={selectedMethod.requires_proof} /><p className="mt-2 text-xs text-muted-foreground">الصيغ المدعومة: JPG, PNG, WEBP, PDF — الحد الأقصى 5MB.</p></div> : null}
+          </>
+        ) : (
+          <div className="rounded-2xl border border-success/20 bg-success/10 p-4 text-sm text-foreground">
+            سيتم إنشاء الطلب مباشرة وخصم المبلغ من رصيدك عند نجاح العملية.
+          </div>
+        )}
+
         <div><Label htmlFor="notes">ملاحظات إضافية</Label><Textarea id="notes" placeholder="أضف أي توضيحات تساعد على تنفيذ الطلب بدقة" value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
-        <Button type="submit" className="w-full" disabled={loading}>{loading ? "جارٍ إرسال الطلب..." : "إرسال الطلب الآن"}</Button>
+        <Button type="submit" className="w-full" disabled={loading || (paymentMode === "wallet" && !walletEnough)}>{loading ? "جارٍ إرسال الطلب..." : paymentMode === "wallet" ? "تأكيد الطلب والخصم من الرصيد" : "إرسال الطلب الآن"}</Button>
       </div>
     </form>
   );

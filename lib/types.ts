@@ -88,6 +88,39 @@ export type OrderStatus =
   | "قيد التنفيذ"
   | "مكتمل";
 
+
+export type WalletTransactionType = "topup_approved" | "order_debit" | "refund" | "admin_adjustment";
+export type WalletTopupStatus = "pending" | "approved" | "rejected";
+
+export type WalletSummary = {
+  balance_usd: number;
+  transactions: WalletTransactionSummary[];
+  pending_topups: WalletTopupSummary[];
+};
+
+export type WalletTransactionSummary = {
+  id: string;
+  type: WalletTransactionType;
+  amount_usd: number;
+  balance_after: number;
+  order_id?: string | null;
+  topup_id?: string | null;
+  note?: string | null;
+  created_at: string;
+};
+
+export type WalletTopupSummary = {
+  id: string;
+  amount_usd: number;
+  amount_local?: number | null;
+  exchange_rate_used: number;
+  status: WalletTopupStatus;
+  rejection_reason?: string | null;
+  notes?: string | null;
+  payment_method_title?: string | null;
+  created_at: string;
+};
+
 export type ExchangeRate = {
   rate: number;
   base_currency: string;
