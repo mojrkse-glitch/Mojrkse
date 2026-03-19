@@ -4,6 +4,7 @@ import "./globals.css";
 import { Navbar } from "@/components/site/navbar";
 import { Footer } from "@/components/site/footer";
 import { SupportWidget } from "@/components/site/support-widget";
+import { MobileDock } from "@/components/site/mobile-dock";
 import { siteConfig } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -33,9 +34,10 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
     <html lang="ar" dir="rtl">
       <body>
         <Navbar />
-        <main>{children}</main>
+        <main className="pb-24 md:pb-0">{children}</main>
         <Footer />
         <SupportWidget />
+        <MobileDock />
       </body>
     </html>
   );

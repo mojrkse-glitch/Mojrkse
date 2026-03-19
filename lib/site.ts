@@ -2,7 +2,7 @@ export const siteConfig = {
   name: "Mo.jrk",
   description: "منصة Mo.jrk للخدمات الرقمية وطلبات الشحن والتصميم والخدمات الإلكترونية",
   url: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
-  whatsappPhone: "00963934053425",
+  whatsappPhone: "963934053435",
   whatsappMessage: "مرحبًا، أريد إتمام طلب عبر التسليم باليد من خلال موقع Mo.jrk"
 };
 

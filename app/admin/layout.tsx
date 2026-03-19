@@ -11,7 +11,6 @@ const adminNavigation = [
   { href: "/admin/banners", label: "البانرات" },
   { href: "/admin/payment-methods", label: "وسائل الدفع" },
   { href: "/admin/customers", label: "العملاء" },
-  { href: "/admin/wallet-topups", label: "شحن الرصيد" },
   { href: "/admin/settings", label: "الإعدادات" }
 ];
 

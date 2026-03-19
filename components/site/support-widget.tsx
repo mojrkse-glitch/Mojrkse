@@ -24,9 +24,9 @@ export function SupportWidget() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="fixed bottom-4 left-4 z-50">
+    <div className="fixed bottom-24 left-4 z-50 md:bottom-4">
       {open ? (
-        <div className="mb-3 w-[320px] rounded-2xl border border-border bg-background p-4 shadow-glow">
+        <div className="mb-3 w-[320px] max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-background p-4 shadow-glow">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h3 className="font-bold text-foreground">الدعم السريع</h3>

@@ -3,9 +3,9 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { OrderForm } from "@/components/order/order-form";
 import { Badge } from "@/components/ui/badge";
+import { BackHomeButton } from "@/components/site/back-home-button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getPaymentMethods, getServiceBySlug, getSettings, getWalletSummary } from "@/lib/data-access";
-import { getCurrentUser } from "@/lib/auth";
+import { getPaymentMethods, getServiceBySlug, getSettings } from "@/lib/data-access";
 import { formatCurrency } from "@/lib/utils";
 
 type Params = { slug: string };
@@ -41,12 +41,10 @@ export default async function ServiceDetailsPage({
   params: Promise<Params>;
 }) {
   const { slug } = await params;
-  const currentUser = await getCurrentUser();
-  const [service, paymentMethods, settings, wallet] = await Promise.all([
+  const [service, paymentMethods, settings] = await Promise.all([
     getServiceBySlug(slug),
     getPaymentMethods(),
-    getSettings(),
-    getWalletSummary(currentUser?.id)
+    getSettings()
   ]);
 
   if (!service) {
@@ -54,7 +52,8 @@ export default async function ServiceDetailsPage({
   }
 
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-14">
+    <div className="container mx-auto max-w-7xl px-4 py-10 md:py-14">
+      <BackHomeButton />
       <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
         <div>
           <div className="relative h-[360px] overflow-hidden rounded-[28px] border border-white/10">
@@ -104,14 +103,14 @@ export default async function ServiceDetailsPage({
               {service.fields.map((field) => (
                 <li key={field.id}>• {field.field_label}{field.is_required ? " (إلزامي)" : ""}</li>
               ))}
-              <li>• اختيار الدفع اليدوي أو الدفع مباشرة من رصيد المحفظة</li>
-              <li>• رفع صورة إثبات الدفع فقط عند اختيار الدفع اليدوي بوسيلة تتطلب إثباتًا</li>
+              <li>• اختيار وسيلة الدفع المناسبة حسب العملة المطلوبة</li>
+              <li>• رفع صورة إثبات الدفع إن كانت الوسيلة تتطلب ذلك</li>
             </ul>
           </div>
         </div>
 
         <div className="lg:sticky lg:top-28 lg:self-start">
-          <OrderForm service={service} paymentMethods={paymentMethods} settings={settings} walletBalanceUsd={wallet.balance_usd} />
+          <OrderForm service={service} paymentMethods={paymentMethods} settings={settings} />
         </div>
       </div>
     </div>
