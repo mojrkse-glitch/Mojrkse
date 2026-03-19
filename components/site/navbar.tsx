@@ -33,6 +33,7 @@ export async function Navbar() {
           {user ? (
             <>
               <Link href="/orders" className="hidden text-sm text-muted-foreground md:block">طلباتي</Link>
+              <Link href="/wallet" className="hidden text-sm text-muted-foreground md:block">المحفظة</Link>
               {isAdmin ? <Link href="/admin" className="hidden text-sm text-muted-foreground md:block">الإدارة</Link> : null}
               <Link href="/account"><Button variant="secondary" className="px-4">حسابي</Button></Link>
             </>

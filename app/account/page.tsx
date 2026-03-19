@@ -67,6 +67,9 @@ export default async function AccountPage() {
             <Link href="/orders">
               <Button className="w-full">طلباتي</Button>
             </Link>
+            <Link href="/wallet">
+              <Button variant="secondary" className="w-full">المحفظة</Button>
+            </Link>
             <Link href="/services">
               <Button variant="secondary" className="w-full">اطلب خدمة جديدة</Button>
             </Link>

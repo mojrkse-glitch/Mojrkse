@@ -2,7 +2,7 @@ import { demoBanners, demoCategories, demoFaqs, demoOrders, demoPaymentMethods, 
 import { createAdminSupabaseClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { resolvePrivateFileUrl } from "@/lib/storage";
-import type { Banner, Category, FaqItem, OrderSummary, PaymentMethod, ProfileSummary, Service, ServiceField, SettingsData } from "@/lib/types";
+import type { Banner, Category, FaqItem, OrderSummary, PaymentMethod, ProfileSummary, Service, ServiceField, SettingsData, WalletSummary, WalletTopupSummary, WalletTransactionSummary } from "@/lib/types";
 
 function mapFieldRow(field: any): ServiceField {
   return {
@@ -246,4 +246,73 @@ export function mapStatus(status: string) {
 export function mapStatusToDatabase(status: string) {
   const mapping: Record<string, string> = { "بانتظار المراجعة": "pending_review", "مقبول": "accepted", "مرفوض": "rejected", "قيد التنفيذ": "in_progress", "مكتمل": "completed" };
   return mapping[status] || "pending_review";
+}
+
+
+export async function getWalletSummary(userId?: string | null): Promise<WalletSummary> {
+  const supabase = await createServerSupabaseClient();
+  if (!supabase || !userId) {
+    return { balance_usd: 0, transactions: [], pending_topups: [] };
+  }
+
+  const [walletRes, txRes, topupsRes] = await Promise.all([
+    supabase.from("wallets").select("balance_usd").eq("user_id", userId).maybeSingle(),
+    supabase.from("wallet_transactions").select("id, type, amount_usd, balance_after, order_id, topup_id, note, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(10),
+    supabase.from("wallet_topups").select("id, amount_usd, amount_local, exchange_rate_used, status, rejection_reason, notes, created_at, payment_methods(title)").eq("user_id", userId).order("created_at", { ascending: false }).limit(10)
+  ]);
+
+  const transactions: WalletTransactionSummary[] = (txRes.data || []).map((item: any) => ({
+    id: item.id,
+    type: item.type,
+    amount_usd: Number(item.amount_usd || 0),
+    balance_after: Number(item.balance_after || 0),
+    order_id: item.order_id,
+    topup_id: item.topup_id,
+    note: item.note,
+    created_at: item.created_at
+  }));
+
+  const pending_topups: WalletTopupSummary[] = (topupsRes.data || []).map((item: any) => ({
+    id: item.id,
+    amount_usd: Number(item.amount_usd || 0),
+    amount_local: item.amount_local !== null ? Number(item.amount_local || 0) : null,
+    exchange_rate_used: Number(item.exchange_rate_used || 0),
+    status: item.status,
+    rejection_reason: item.rejection_reason,
+    notes: item.notes,
+    payment_method_title: item.payment_methods?.title || null,
+    created_at: item.created_at
+  }));
+
+  return {
+    balance_usd: Number(walletRes.data?.balance_usd || 0),
+    transactions,
+    pending_topups
+  };
+}
+
+export async function getAdminWalletTopups() {
+  const supabase = await createServerSupabaseClient();
+  if (!supabase) return [];
+  const storageClient = createAdminSupabaseClient() || (supabase as any);
+  const { data, error } = await supabase.from("wallet_topups").select("id, user_id, amount_usd, amount_local, exchange_rate_used, status, rejection_reason, notes, created_at, proof_file_url, payment_methods(title)").order("created_at", { ascending: false });
+  if (error || !data) return [];
+  const userIds = [...new Set(data.map((item: any) => item.user_id).filter(Boolean))];
+  const { data: profiles } = userIds.length ? await supabase.from("profiles").select("id, full_name, email").in("id", userIds) : { data: [] as any[] };
+  const profileMap = new Map((profiles || []).map((profile: any) => [profile.id, profile]));
+  return Promise.all(data.map(async (item: any) => ({
+    id: item.id,
+    user_id: item.user_id,
+    customer_name: profileMap.get(item.user_id)?.full_name || "عميل",
+    customer_email: profileMap.get(item.user_id)?.email || "",
+    amount_usd: Number(item.amount_usd || 0),
+    amount_local: item.amount_local !== null ? Number(item.amount_local || 0) : null,
+    exchange_rate_used: Number(item.exchange_rate_used || 0),
+    status: item.status,
+    rejection_reason: item.rejection_reason,
+    notes: item.notes,
+    payment_method_title: item.payment_methods?.title || "غير محدد",
+    proof_signed_url: await resolvePrivateFileUrl(storageClient, "wallet-topup-proofs", item.proof_file_url),
+    created_at: item.created_at
+  })));
 }

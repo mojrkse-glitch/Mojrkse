@@ -29,6 +29,7 @@ export function Footer() {
             <li><Link href="/register">إنشاء حساب</Link></li>
             <li><Link href="/account">حسابي</Link></li>
             <li><Link href="/orders">طلباتي</Link></li>
+            <li><Link href="/wallet">المحفظة</Link></li>
           </ul>
         </div>
 

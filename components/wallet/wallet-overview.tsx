@@ -26,17 +26,20 @@ const topupStatusLabel: Record<string, string> = {
 
 export function WalletOverview({ wallet }: { wallet: WalletSummary }) {
   return (
-    <div className="space-y-6">
-      <Card>
+    <div className="grid gap-6 lg:grid-cols-3">
+      <Card className="lg:col-span-1">
         <CardHeader><CardTitle>الرصيد الحالي</CardTitle></CardHeader>
         <CardContent>
           <p className="text-4xl font-black text-primary">{formatCurrency(wallet.balance_usd)}</p>
-          <p className="mt-3 text-sm text-muted-foreground">يمكنك استخدام هذا الرصيد لطلب الخدمات مباشرة دون رفع إثبات دفع في كل مرة.</p>
-          <div className="mt-5"><Link href="/services"><Button>اطلب خدمة الآن</Button></Link></div>
+          <p className="mt-3 text-sm text-muted-foreground">يمكن استخدام الرصيد مباشرة عند طلب الخدمة إذا كانت المحفظة مفعلة في قاعدة البيانات.</p>
+          <div className="mt-5 flex gap-3">
+            <Link href="/services"><Button>اطلب خدمة</Button></Link>
+            <Link href="/account"><Button variant="outline">حسابي</Button></Link>
+          </div>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="lg:col-span-1">
         <CardHeader><CardTitle>طلبات الشحن الأخيرة</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {wallet.pending_topups.length ? wallet.pending_topups.map((topup) => (
@@ -54,7 +57,7 @@ export function WalletOverview({ wallet }: { wallet: WalletSummary }) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="lg:col-span-1">
         <CardHeader><CardTitle>آخر الحركات</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {wallet.transactions.length ? wallet.transactions.map((item) => (
@@ -69,7 +72,6 @@ export function WalletOverview({ wallet }: { wallet: WalletSummary }) {
                   <p className="mt-1 text-xs text-muted-foreground">بعد الحركة: {formatCurrency(item.balance_after)}</p>
                 </div>
               </div>
-              {item.order_id ? <p className="mt-3 text-xs text-muted-foreground">مرجع الطلب: {item.order_id}</p> : null}
             </div>
           )) : <p className="text-sm text-muted-foreground">لا توجد حركات حتى الآن.</p>}
         </CardContent>
